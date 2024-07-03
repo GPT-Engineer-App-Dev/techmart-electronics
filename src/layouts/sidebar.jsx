@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,7 +14,6 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { CircleUser, Menu, Package2 } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
 import { navItems } from "../App";
 
 const Layout = () => {
@@ -20,7 +23,9 @@ const Layout = () => {
       <div className="flex flex-col">
         <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
           <MobileSidebar />
-          <div className="w-full flex-1">{/* Add nav bar content here! */}</div>
+          <div className="w-full flex-1">
+            <SearchBar />
+          </div>
           <UserDropdown />
         </header>
         <main className="flex-grow p-4 overflow-auto">
@@ -113,5 +118,57 @@ const SidebarNavLink = ({ to, children }) => (
     {children}
   </NavLink>
 );
+
+const SearchBar = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
+  });
+
+  const filteredProducts = products?.filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        placeholder="Search products..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full"
+      />
+      {searchTerm && (
+        <div className="absolute left-0 right-0 mt-2 bg-white border rounded shadow-lg z-10">
+          {isLoading ? (
+            <div className="p-4">Loading...</div>
+          ) : filteredProducts?.length ? (
+            filteredProducts.map((product) => (
+              <Link
+                key={product.id}
+                to={`/products/${product.id}`}
+                className="block p-2 hover:bg-gray-100"
+                onClick={() => setSearchTerm("")}
+              >
+                {product.name}
+              </Link>
+            ))
+          ) : (
+            <div className="p-4">No products found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const fetchProducts = async () => {
+  const res = await fetch("/api/products");
+  if (!res.ok) {
+    throw new Error("Failed to fetch products");
+  }
+  return res.json();
+};
 
 export default Layout;
